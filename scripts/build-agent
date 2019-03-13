@@ -7,4 +7,5 @@ cd $(dirname $0)/..
 
 mkdir -p bin
 [ "$(uname)" != "Darwin" ] && LINKFLAGS="-extldflags -static -s"
+echo Building rancher agent
 CGO_ENABLED=0 go build -i -tags k8s -ldflags "-X main.VERSION=$VERSION $LINKFLAGS" -o bin/agent ./pkg/agent

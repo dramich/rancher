@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-echo Starting rancher server
 cd $(dirname $0)/..
 
 CMD=bin/rancher
@@ -9,8 +8,10 @@ if [ ! -x $CMD ]; then
     ./scripts/build
 fi
 
+echo Starting rancher server
+
 rm -rf build/testdata
 mkdir -p build/testdata
 cd build/testdata
-export KUBECONFIG=
-exec ../../$CMD --add-local=true
+export KUBECONFIG=/root/.kube/config
+exec ../../$CMD

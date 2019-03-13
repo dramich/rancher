@@ -7,14 +7,11 @@ cleanup()
     EXIT=$?
     set +e
     echo Stopping rancher server
-    kill $PID
-    wait $PID
-    echo Cleanup DIND
-    TESTS="$CWD/$(dirname $0)/../tests"
-    for dindYML in $(find $TESTS -iname 'dind-*.yml'); do
-        rke remove --dind --force --config $dindYML
-        rm -f $dindYML
-    done
+    kill $RANCHER_PID
+    wait $RANCHER_PID
+    echo Stopping klipper
+    kill $KLIPPER_PID
+    wait $KLIPPER_PID
     return $EXIT
 }
 
@@ -27,11 +24,21 @@ if [ ${ARCH} == arm64 ]; then
     export ETCD_UNSUPPORTED_ARCH=arm64
 fi
 
+exec k3s server --write-kubeconfig "/root/.kube/config" &
+KLIPPER_PID=$!
+
 $(dirname $0)/run &
-PID=$!
-trap cleanup exit
+RANCHER_PID=$!
+
+echo 'Waiting for Rancher server'
 
 while ! curl -sf http://localhost:8080/ping; do
+    sleep 2
+done
+
+echo 'Waiting for klipper'
+
+while ! [ $(k3s kubectl --kubeconfig /root/.kube/config get --raw /healthz) == ok ]; do
     sleep 2
 done
 
