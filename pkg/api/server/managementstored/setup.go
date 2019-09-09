@@ -2,6 +2,7 @@ package managementstored
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/rancher/norman/store/crd"
@@ -65,6 +66,7 @@ import (
 	client "github.com/rancher/types/client/management/v3"
 	projectclient "github.com/rancher/types/client/project/v3"
 	"github.com/rancher/types/config"
+	"github.com/sirupsen/logrus"
 )
 
 func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager *clustermanager.Manager,
@@ -74,80 +76,91 @@ func Setup(ctx context.Context, apiContext *config.ScaledContext, clusterManager
 
 	factory := &crd.Factory{ClientGetter: apiContext.ClientGetter}
 
-	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &managementschema.Version,
-		client.AuthConfigType,
-		client.CatalogType,
-		client.CatalogTemplateType,
-		client.CatalogTemplateVersionType,
-		client.ClusterAlertType,
-		client.ClusterAlertGroupType,
-		client.ClusterCatalogType,
-		client.ClusterLoggingType,
-		client.ClusterAlertRuleType,
-		client.ClusterMonitorGraphType,
-		client.ClusterRegistrationTokenType,
-		client.ClusterRoleTemplateBindingType,
-		client.ClusterScanType,
-		client.ClusterType,
-		client.ComposeConfigType,
-		client.DynamicSchemaType,
-		client.EtcdBackupType,
-		client.FeatureType,
-		client.GlobalRoleBindingType,
-		client.GlobalRoleType,
-		client.GroupMemberType,
-		client.GroupType,
-		client.KontainerDriverType,
-		client.ListenConfigType,
-		client.MultiClusterAppType,
-		client.MultiClusterAppRevisionType,
-		client.MonitorMetricType,
-		client.NodeDriverType,
-		client.NodePoolType,
-		client.NodeTemplateType,
-		client.NodeType,
-		client.NotifierType,
-		client.PodSecurityPolicyTemplateProjectBindingType,
-		client.PodSecurityPolicyTemplateType,
-		client.PreferenceType,
-		client.ProjectAlertType,
-		client.ProjectAlertGroupType,
-		client.ProjectCatalogType,
-		client.ProjectLoggingType,
-		client.ProjectAlertRuleType,
-		client.ProjectMonitorGraphType,
-		client.ProjectNetworkPolicyType,
-		client.ProjectRoleTemplateBindingType,
-		client.ProjectType,
-		client.RKEK8sSystemImageType,
-		client.RKEK8sServiceOptionType,
-		client.RKEAddonType,
-		client.RoleTemplateType,
-		client.SettingType,
-		client.TemplateType,
-		client.TemplateVersionType,
-		client.TemplateContentType,
-		client.TokenType,
-		client.UserAttributeType,
-		client.UserType,
-		client.GlobalDNSType,
-		client.GlobalDNSProviderType,
-		client.ClusterTemplateType,
-		client.ClusterTemplateRevisionType,
-	)
+	// Attempt batch create of CRDs three times, if that fails Rancher will be broke so we panic
+	for i := 0; i < 3; i++ {
+		factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &managementschema.Version,
+			client.AuthConfigType,
+			client.CatalogType,
+			client.CatalogTemplateType,
+			client.CatalogTemplateVersionType,
+			client.ClusterAlertType,
+			client.ClusterAlertGroupType,
+			client.ClusterCatalogType,
+			client.ClusterLoggingType,
+			client.ClusterAlertRuleType,
+			client.ClusterMonitorGraphType,
+			client.ClusterRegistrationTokenType,
+			client.ClusterRoleTemplateBindingType,
+			client.ClusterScanType,
+			client.ClusterType,
+			client.ComposeConfigType,
+			client.DynamicSchemaType,
+			client.EtcdBackupType,
+			client.FeatureType,
+			client.GlobalRoleBindingType,
+			client.GlobalRoleType,
+			client.GroupMemberType,
+			client.GroupType,
+			client.KontainerDriverType,
+			client.ListenConfigType,
+			client.MultiClusterAppType,
+			client.MultiClusterAppRevisionType,
+			client.MonitorMetricType,
+			client.NodeDriverType,
+			client.NodePoolType,
+			client.NodeTemplateType,
+			client.NodeType,
+			client.NotifierType,
+			client.PodSecurityPolicyTemplateProjectBindingType,
+			client.PodSecurityPolicyTemplateType,
+			client.PreferenceType,
+			client.ProjectAlertType,
+			client.ProjectAlertGroupType,
+			client.ProjectCatalogType,
+			client.ProjectLoggingType,
+			client.ProjectAlertRuleType,
+			client.ProjectMonitorGraphType,
+			client.ProjectNetworkPolicyType,
+			client.ProjectRoleTemplateBindingType,
+			client.ProjectType,
+			client.RKEK8sSystemImageType,
+			client.RKEK8sServiceOptionType,
+			client.RKEAddonType,
+			client.RoleTemplateType,
+			client.SettingType,
+			client.TemplateType,
+			client.TemplateVersionType,
+			client.TemplateContentType,
+			client.TokenType,
+			client.UserAttributeType,
+			client.UserType,
+			client.GlobalDNSType,
+			client.GlobalDNSProviderType,
+			client.ClusterTemplateType,
+			client.ClusterTemplateRevisionType,
+		)
 
-	factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &projectschema.Version,
-		projectclient.AppType,
-		projectclient.AppRevisionType,
-		projectclient.PipelineExecutionType,
-		projectclient.PipelineSettingType,
-		projectclient.PipelineType,
-		projectclient.SourceCodeCredentialType,
-		projectclient.SourceCodeProviderConfigType,
-		projectclient.SourceCodeRepositoryType,
-	)
+		factory.BatchCreateCRDs(ctx, config.ManagementStorageContext, schemas, &projectschema.Version,
+			projectclient.AppType,
+			projectclient.AppRevisionType,
+			projectclient.PipelineExecutionType,
+			projectclient.PipelineSettingType,
+			projectclient.PipelineType,
+			projectclient.SourceCodeCredentialType,
+			projectclient.SourceCodeProviderConfigType,
+			projectclient.SourceCodeRepositoryType,
+		)
 
-	factory.BatchWait()
+		err := factory.BatchWait()
+		if err != nil {
+			if i == 2 {
+				panic(fmt.Sprintf("error batch creating CRD: %v", err))
+			}
+			logrus.Errorf("error batch creating CRD: %v", err)
+		} else {
+			break
+		}
+	}
 
 	Clusters(schemas, apiContext, clusterManager, k8sProxy)
 	ClusterRoleTemplateBinding(schemas, apiContext)
