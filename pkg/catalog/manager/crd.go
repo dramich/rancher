@@ -53,7 +53,11 @@ func (m *Manager) getTemplateMap(catalogName string, namespace string) (map[stri
 }
 
 func (m *Manager) updateTemplate(template *v3.CatalogTemplate, toUpdate v3.CatalogTemplate) error {
-	r, _ := labels.NewRequirement(TemplateNameLabel, selection.Equals, []string{template.Name})
+	r, err := labels.NewRequirement(TemplateNameLabel, selection.Equals, []string{template.Name})
+	if err != nil {
+		fmt.Printf("GETTING AN ERROR %v\n", err)
+		return err
+	}
 	templateVersions, err := m.templateVersionLister.List(template.Namespace, labels.NewSelector().Add(*r))
 	if err != nil {
 		return errors.Wrapf(err, "failed to list templateVersions")
