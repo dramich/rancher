@@ -40,7 +40,7 @@ fi
 # Pull the yaml and replace the agent_image holder with the passed in image
 yaml=$(curl --insecure -sfL $yaml_url | sed -e 's=agent_image='"$agent_image"'=')
 
-if [ "$2" = "-dry-run" ]
+if [ "$2" = "-dry-run" || "$2" = "--dry-run" ]
 then
     # Uncomment the env var for dry-run mode
     yaml=$(sed -e 's/# // ' <<< "$yaml")
